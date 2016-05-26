@@ -52,6 +52,10 @@ data AlgorithmOptions = AlgorithmOptions
                                     -- in cluster score more than
                                     -- algDiskMovesFactor times higher than
                                     -- the gain in migration moves
+  , algLongMovesFactor :: Double    -- ^ Allow only long moves leads to gain
+                                    -- in cluster score more than
+                                    -- algLongMovesFactor times higher than
+                                    -- the gain in fast moves
   , algInstanceMoves :: Bool        -- ^ Whether instance moves are allowed
   , algRestrictedMigration :: Bool  -- ^ Whether migration is restricted
   , algIgnoreSoftErrors :: Bool     -- ^ Whether to always ignore soft errors
@@ -73,6 +77,7 @@ fromCLIOptions :: CLI.Options -> AlgorithmOptions
 fromCLIOptions opts = AlgorithmOptions
   { algDiskMoves = CLI.optDiskMoves opts
   , algDiskMovesFactor = CLI.optAvoidDiskMoves opts
+  , algLongMovesFactor = CLI.optAvoidLongMoves opts
   , algInstanceMoves = CLI.optInstMoves opts
   , algRestrictedMigration = CLI.optRestrictedMigrate opts
   , algIgnoreSoftErrors = CLI.optIgnoreSoftErrors opts

@@ -151,6 +151,9 @@ data Options = Options
   , optAvoidDiskMoves :: Double      -- ^ Allow only disk moves improving
                                      -- cluster score in more than
                                      -- optAvoidDiskMoves times
+  , optAvoidLongMoves :: Double      -- ^ Allow only long-time moves improving
+                                     -- cluster score in more than
+                                     -- optAvoidLongMoves times
   , optInstMoves   :: Bool           -- ^ Allow instance moves
   , optDiskTemplate :: Maybe DiskTemplate  -- ^ Override for the disk template
   , optSpindleUse  :: Maybe Int      -- ^ Override for the spindle usage
@@ -200,7 +203,7 @@ data Options = Options
   , optNoHeaders   :: Bool           -- ^ Do not show a header line
   , optNoSimulation :: Bool          -- ^ Skip the rebalancing dry-run
   , optNodeSim     :: [String]       -- ^ Cluster simulation mode
-  , optNodeTags    :: Maybe [String] -- ^ List of node tags to restrict to 
+  , optNodeTags    :: Maybe [String] -- ^ List of node tags to restrict to
   , optOffline     :: [String]       -- ^ Names of offline nodes
   , optRestrictToNodes :: Maybe [String] -- ^ if not Nothing, restrict
                                      -- allocation to those nodes
@@ -234,6 +237,7 @@ defaultOptions  = Options
   { optDataFile    = Nothing
   , optDiskMoves   = True
   , optAvoidDiskMoves = 1.0
+  , optAvoidLongMoves = 1.0
   , optInstMoves   = True
   , optIndependentGroups = False
   , optAcceptExisting = False
@@ -368,6 +372,16 @@ oAvoidDiskMoves =
    "gain in cluster metrics on each balancing step including disk moves\
    \ should be FACTOR times higher than the gain after migrations in order to\
    \ admit disk move during the step",
+   OptComplFloat)
+
+oAvoidLongMoves :: OptType
+oAvoidLongMoves =
+  (Option "" ["avoid-long-moves"]
+   (reqWithConversion (tryRead "long-time moves avoiding factor")
+    (\f opts -> Ok opts { optAvoidLongMoves = f }) "FACTOR")
+   "gain in cluster metrics on each balancing step including long-time moves\
+   \ should be FACTOR times higher than the gain after fast moves only\
+   \ in order to admit long-time move during the step",
    OptComplFloat)
 
 oMonD :: OptType
@@ -678,7 +692,7 @@ oMinResources =
   (Option "" ["minimal-resources"]
    (reqWithConversion (tryRead "minimal resources")
     (\d opts -> Ok opts { optMinResources = d}) "FACTOR")
-   "minimal resources to be present on each in multiples of\ 
+   "minimal resources to be present on each in multiples of\
    \ the standard allocation for not onlining standby nodes",
    OptComplFloat)
 
@@ -718,7 +732,7 @@ oNodeTags =
    (ReqArg (\ f opts -> Ok opts { optNodeTags = Just $ sepSplit ',' f })
     "TAG,...") "Restrict to nodes with the given tags",
    OptComplString)
-     
+
 oOfflineMaintenance :: OptType
 oOfflineMaintenance =
   (Option "" ["offline-maintenance"]
