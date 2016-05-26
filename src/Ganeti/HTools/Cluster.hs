@@ -430,6 +430,19 @@ checkInstanceMove opts nodes_idx ini_tbl@(Table nl _ _ _) target =
         foldl' (checkSingleStep force ini_tbl target) best_migr_tbl disk_moves
   in (best_migr_tbl, best_tbl)
 
+moveVolume :: IMove -> Instance.Instance -> Int
+moveVolume Failover inst = Instance.mem inst
+moveVolume (FailoverToAny _) inst = Instance.mem inst
+moveVolume _ inst = (Instance.mem inst) + (Instance.dsk inst)
+
+
+placementVolume :: [Instance.Instance] -> Placement -> Int
+placementVolume victims (idx, _, _, move, _) = moveVolume move inst
+  where inst = victims !! idx
+
+solutionVolume :: [Instance.Instance] -> Table -> Int
+solutionVolume victims (Table _ _ _ plcs) = sum $ map (placementVolume victims) plcs
+
 -- | Compute the best next move.
 checkMove :: AlgorithmOptions       -- ^ Algorithmic options for balancing
              -> [Ndx]               -- ^ Allowed target node indices
@@ -1029,7 +1042,7 @@ getMoves (Table _ initial_il _ initial_plc, Table final_nl _ _ final_plc) =
           (_, cmds) = computeMoves inst inst_name mv np ns
       in (affected, idx, mv, cmds)
   in map plctoMoves . reverse . drop (length initial_plc) $ reverse final_plc
-             
+
 -- | Inner function for splitJobs, that either appends the next job to
 -- the current jobset, or starts a new jobset.
 mergeJobs :: ([JobSet], [Ndx]) -> MoveJob -> ([JobSet], [Ndx])
