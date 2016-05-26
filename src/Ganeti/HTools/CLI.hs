@@ -151,6 +151,7 @@ data Options = Options
   , optAvoidDiskMoves :: Double      -- ^ Allow only disk moves improving
                                      -- cluster score in more than
                                      -- optAvoidDiskMoves times
+  , optLongMoves   :: Bool           -- ^ Allow long-time moves
   , optAvoidLongMoves :: Double      -- ^ Allow only long-time moves improving
                                      -- cluster score in more than
                                      -- optAvoidLongMoves times
@@ -237,6 +238,7 @@ defaultOptions  = Options
   { optDataFile    = Nothing
   , optDiskMoves   = True
   , optAvoidDiskMoves = 1.0
+  , optLongMoves   = True
   , optAvoidLongMoves = 1.0
   , optInstMoves   = True
   , optIndependentGroups = False
@@ -373,6 +375,14 @@ oAvoidDiskMoves =
    \ should be FACTOR times higher than the gain after migrations in order to\
    \ admit disk move during the step",
    OptComplFloat)
+
+oLongMoves :: OptType
+oLongMoves =
+  (Option "" ["no-long-moves"]
+   (NoArg (\ opts -> Ok opts { optLongMoves = False}))
+   "disallow long-time moves from the list of allowed instance changes,\
+   \ thus allowing only the 'cheap' failover/migrate operations",
+   OptComplNone)
 
 oAvoidLongMoves :: OptType
 oAvoidLongMoves =

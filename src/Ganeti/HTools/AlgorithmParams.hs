@@ -52,6 +52,7 @@ data AlgorithmOptions = AlgorithmOptions
                                     -- in cluster score more than
                                     -- algDiskMovesFactor times higher than
                                     -- the gain in migration moves
+  , algLongMoves :: Bool            -- ^ Whether long-time moves are allowed
   , algLongMovesFactor :: Double    -- ^ Allow only long moves leads to gain
                                     -- in cluster score more than
                                     -- algLongMovesFactor times higher than
@@ -77,6 +78,7 @@ fromCLIOptions :: CLI.Options -> AlgorithmOptions
 fromCLIOptions opts = AlgorithmOptions
   { algDiskMoves = CLI.optDiskMoves opts
   , algDiskMovesFactor = CLI.optAvoidDiskMoves opts
+  , algLongMoves = CLI.optLongMoves opts
   , algLongMovesFactor = CLI.optAvoidLongMoves opts
   , algInstanceMoves = CLI.optInstMoves opts
   , algRestrictedMigration = CLI.optRestrictedMigrate opts
