@@ -443,12 +443,28 @@ placementVolume victims (idx, _, _, move, _) = moveVolume move inst
 solutionVolume :: [Instance.Instance] -> Table -> Int
 solutionVolume victims (Table _ _ _ plcs) = sum $ map (placementVolume victims) plcs
 
+avgSolutionVolume :: [Instance.Instance] -> [Table] -> Double
+avgSolutionVolume victims sols =  totalVolume / totalSols
+  where totalVolume = fromIntegral $ sum $ map (solutionVolume victims) sols
+        totalSols = fromIntegral $ length sols
+
+filterSolution :: AlgorithmOptions -> [Instance.Instance] -> Double -> Table -> Maybe Table
+filterSolution opts victims avg_vol sol =
+  let long_moves = algLongMoves opts
+      long_moves_f = algLongMovesFactor opts
+      sol_vol = fromIntegral $ solutionVolume victims sol
+  in if long_moves
+    || sol_vol <= avg_vol * long_moves_f
+    then Just sol
+    else Nothing
+
+
 -- | Compute the best next move.
 checkMove :: AlgorithmOptions       -- ^ Algorithmic options for balancing
              -> [Ndx]               -- ^ Allowed target node indices
              -> Table               -- ^ The current solution
              -> [Instance.Instance] -- ^ List of instances still to move
-             -> Table               -- ^ The new solution
+             -> Maybe Table         -- ^ The new solution
 checkMove opts nodes_idx ini_tbl@(Table _ _ ini_cv _) victims =
   let disk_moves = algDiskMoves opts
       disk_moves_f = algDiskMovesFactor opts
@@ -459,16 +475,18 @@ checkMove opts nodes_idx ini_tbl@(Table _ _ ini_cv _) victims =
       -- spark the evaluation
       table_pairs = parMap rwhnf (checkInstanceMove opts nodes_idx ini_tbl)
                     victims
+      avg_vol = avgSolutionVolume victims (map fst table_pairs ++ map snd table_pairs)
 
       -- iterate over all instances, computing the best move
       best_migr_tbl@(Table _ _ best_migr_cv _) =
         foldl' compareTables ini_tbl $ map fst table_pairs
       best_tbl@(Table _ _ best_cv _) =
         foldl' compareTables ini_tbl $ map snd table_pairs
-  in if not disk_moves
-     || ini_cv - best_cv <= (ini_cv - best_migr_cv) * disk_moves_f
-       then best_migr_tbl
-       else best_tbl -- best including disk moves
+      best_sol = if not disk_moves
+                  || ini_cv - best_cv <= (ini_cv - best_migr_cv) * disk_moves_f
+                  then best_migr_tbl
+                  else best_tbl -- best including disk moves
+       in filterSolution opts victims avg_vol best_sol
 
 -- | Check if we are allowed to go deeper in the balancing.
 doNextBalance :: Table     -- ^ The starting table
@@ -506,12 +524,17 @@ tryBalance opts ini_tbl =
         allowed_inst = liftA2 (&&) (allowed_node . Instance.pNode)
                          (liftA2 (||) allowed_node (< 0) . Instance.sNode)
         good_reloc_inst = filter allowed_inst reloc_inst
-        fin_tbl = checkMove opts good_nidx ini_tbl good_reloc_inst
-        (Table _ _ fin_cv _) = fin_tbl
-    in
-      if fin_cv < ini_cv && (ini_cv > mg_limit || ini_cv - fin_cv >= min_gain)
-      then Just fin_tbl -- this round made success, return the new table
-      else Nothing
+        mb_fin_tbl = checkMove opts good_nidx ini_tbl good_reloc_inst
+    in case mb_fin_tbl of
+             Just fin_tbl@(Table _ _ fin_cv _) ->
+                if fin_cv < ini_cv && (ini_cv > mg_limit
+                  || ini_cv - fin_cv >= min_gain)
+                then Just fin_tbl -- this round made success, return the new table
+                else Nothing
+             _ -> Nothing
+
+
+
 
 -- * Allocation functions
 
