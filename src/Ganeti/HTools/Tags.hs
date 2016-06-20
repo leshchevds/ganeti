@@ -39,17 +39,20 @@ module Ganeti.HTools.Tags
   , getMigRestrictions
   , getRecvMigRestrictions
   , getLocations
+  , getBandwidth
+  , getBandwidthGraph
+  , mergeByPrefixes
   ) where
 
-import Control.Monad (guard, (>=>))
-import Data.List (isPrefixOf, isInfixOf, stripPrefix)
+import Control.Monad ((>=>))
+import Data.List (isPrefixOf, stripPrefix)
 import Data.Maybe (mapMaybe)
 import qualified Data.Set as S
 
 import qualified Ganeti.HTools.Node as Node
 import Ganeti.HTools.Tags.Constants ( standbyPrefix
                                     , migrationPrefix, allowMigrationPrefix
-                                    , locationPrefix )
+                                    , locationPrefix, bandwidthPrefix )
 
 -- * Predicates
 
@@ -79,9 +82,7 @@ getMigRestrictions = getTags migrationPrefix
 -- the parts before and after.
 splitAtColons :: String -> Maybe (String, String)
 
-splitAtColons (':':':':xs) = do
-  guard $ not ("::" `isInfixOf` xs)
-  return ("", xs)
+splitAtColons (':':':':xs) = return ("", xs)
 
 splitAtColons (x:xs) = do
   (as, bs) <- splitAtColons xs
@@ -107,3 +108,51 @@ getRecvMigRestrictions ctags ntags =
 -- from the node tags.
 getLocations :: [String] -> [String] -> S.Set String
 getLocations = getTags locationPrefix
+
+-- | Given the cluster tags extract the network bandwidth
+-- from a node tag.
+getBandwidth :: [String] -> [String] -> S.Set String
+getBandwidth = getTags bandwidthPrefix
+
+-- | Split given string on the  all "::" occurences
+splitToColonsList :: String -> [String]
+splitToColonsList str =
+  case splitAtColons str of
+    Just (f, s) -> f : splitToColonsList s
+    Nothing -> [str]
+
+-- | Try to parse string into value
+maybeRead :: Read a => String -> Maybe a
+maybeRead s = case reads s of
+                [(x,"")] -> Just x
+                _        -> Nothing
+
+-- | Extract bandwidth graph from cluster tags
+getBandwidthGraph :: [String] -> [(String, String, Int)]
+getBandwidthGraph ctags =
+  let unprefTags = mapMaybe (stripPrefix bandwidthPrefix) ctags
+      tupleList = mapMaybe (listToTuple . splitToColonsList) unprefTags
+  in mapMaybe parseInt tupleList
+  where parseInt (a, b, s) = case maybeRead s :: Maybe Int of
+          Just i -> Just (a, b, i)
+          Nothing -> Nothing
+        listToTuple (a:b:c:[]) = Just (a, b, c)
+        listToTuple _ = Nothing
+
+-- | Maybe extract string after first occurence of ":" return
+stripFirstPrefix :: String -> Maybe String
+stripFirstPrefix (':':':':_) = Nothing
+stripFirstPrefix (':':_) = Just ""
+stripFirstPrefix (x:xs) =
+  case stripFirstPrefix xs of
+    Just pref -> Just (x:pref)
+    Nothing -> Nothing
+stripFirstPrefix _ = Nothing
+
+-- | Drop all victims having same prefixes from inherits, unite sets
+mergeByPrefixes :: S.Set String -> S.Set String -> S.Set String
+mergeByPrefixes victims inherits =
+  let prefixes = mapMaybe stripFirstPrefix (S.toList inherits)
+      prefixFilter s = not $ any (`isPrefixOf` s) prefixes
+      filtered = S.filter prefixFilter victims
+  in S.union inherits filtered
