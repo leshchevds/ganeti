@@ -5523,6 +5523,9 @@ dataCollectorDrbd       = "drbd"
 dataCollectorLv         :: String
 dataCollectorLv         = "lv"
 
+dataCollectorBandwidth  :: String
+dataCollectorBandwidth  = "bandwidth"
+
 -- | Collector for the resident set size of kvm processes, i.e.,
 -- the number of pages the kvm process has in RAM.
 dataCollectorKvmRSS     :: String
@@ -5546,6 +5549,7 @@ dataCollectorNames =
                       , dataCollectorInstStatus
                       , dataCollectorXenCpuLoad
                       , dataCollectorKvmRSS
+                      , dataCollectorBandwidth
                       , dataCollectorDiagnose
                       ]
 

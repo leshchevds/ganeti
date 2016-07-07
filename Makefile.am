@@ -928,6 +928,7 @@ HS_LIB_SRCS = \
 	src/Ganeti/DataCollectors.hs \
 	src/Ganeti/DataCollectors/CLI.hs \
 	src/Ganeti/DataCollectors/CPUload.hs \
+	src/Ganeti/DataCollectors/Bandwidth.hs \
 	src/Ganeti/DataCollectors/Diagnose.hs \
 	src/Ganeti/DataCollectors/Diskstats.hs \
 	src/Ganeti/DataCollectors/Drbd.hs \
