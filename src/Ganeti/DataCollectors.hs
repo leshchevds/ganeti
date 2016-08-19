@@ -48,6 +48,7 @@ import qualified Ganeti.DataCollectors.InstStatus as InstStatus
 import qualified Ganeti.DataCollectors.KvmRSS as KvmRSS
 import qualified Ganeti.DataCollectors.Lv as Lv
 import qualified Ganeti.DataCollectors.XenCpuLoad as XenCpuLoad
+import qualified Ganeti.DataCollectors.Bandwidth as Bandwidth
 import Ganeti.DataCollectors.Types (DataCollector(..),ReportBuilder(..))
 import Ganeti.JSON (GenericContainer(..))
 import Ganeti.Objects
@@ -59,6 +60,7 @@ collectors =
   [ cpuLoadCollector
   , xenCpuLoadCollector
   , kvmRSSCollector
+  , bandwidthCollector
   , diskStatsCollector
   , drdbCollector
   , instStatusCollector
@@ -103,3 +105,7 @@ collectors =
     kvmRSSCollector =
       DataCollector KvmRSS.dcName KvmRSS.dcCategory KvmRSS.dcKind
         (StatelessR KvmRSS.dcReport) Nothing activeConfig updateInterval
+    bandwidthCollector =
+      DataCollector Bandwidth.dcName Bandwidth.dcCategory Bandwidth.dcKind
+        (StatefulR Bandwidth.dcReport) (Just Bandwidth.dcUpdate) activeConfig
+        updateInterval

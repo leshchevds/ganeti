@@ -66,6 +66,7 @@ import qualified Text.JSON as J
 import Ganeti.BasicTypes
 import qualified Ganeti.Constants as C
 import Ganeti.Cpu.Types
+import qualified Ganeti.DataCollectors.Bandwidth as Bandwidth
 import qualified Ganeti.DataCollectors.CPUload as CPUload
 import qualified Ganeti.DataCollectors.KvmRSS as KvmRSS
 import qualified Ganeti.DataCollectors.XenCpuLoad as XenCpuLoad
@@ -88,6 +89,7 @@ import Ganeti.Utils (exitIfBad)
 data Report = CPUavgloadReport CPUavgload
             | InstanceCpuReport (Map.Map String Double)
             | InstanceRSSReport (Map.Map String Double)
+            | BandwidthReport   (Map.Map String Int)
 
 -- | Type describing a data collector basic information.
 data DataCollector = DataCollector
@@ -100,6 +102,63 @@ data DataCollector = DataCollector
                  -- ^ How the collector reports are to be used to bring dynamic
                  -- data into a cluster
   }
+
+-- * Network bandwidth data collector
+
+-- | Parse results of the bandwidth data collector.
+mkBandwidthReport :: DCReport -> Maybe Report
+mkBandwidthReport =
+  liftM BandwidthReport . maybeParseMap . dcReportData
+
+-- | Update node data based on the given report
+-- We consider all nodes with the same group as given
+-- Then for each node from report get it's group
+-- and update node's bandwidthGroupMap respectively
+updateNodeBandwidthMap :: (Node.Node, Report)
+                       -> Node.List
+                       -> Node.Node
+                       -> Node.Node
+updateNodeBandwidthMap (nr, report) nl n =
+  if Node.group n == Node.group nr
+  then case report of
+    BandwidthReport bmap ->
+      let bl = Map.toList bmap
+          nl' = Container.elems nl
+          bl' = foldl
+                  (\nbl (ndname, b) ->
+                      nbl ++
+                      case L.find (\nd -> Node.name nd == ndname) nl' of
+                        Just node -> [(Node.group node, b)]
+                        Nothing -> []
+                  )
+                  [] bl
+          nbmap = Map.fromList bl'
+      in Node.setBandwidthGroupMap n nbmap
+    _ -> n
+  else n
+
+-- | Update cluster data based on the given report
+updateNodes :: Node.List
+            -> (Node.Node, Report)
+            -> Node.List
+updateNodes nl rp =
+  Container.map (updateNodeBandwidthMap rp nl) nl
+
+-- | Update cluster data from bandwidth reports.
+useBandwidth :: [(Node.Node, Report)]
+             -> (Node.List, Instance.List)
+             -> Result (Node.List, Instance.List)
+useBandwidth rps (nl, il) =
+  let newnodes = foldl updateNodes nl rps
+  in return (newnodes, il)
+
+-- | The node-total CPU collector.
+bandwidthCollector :: DataCollector
+bandwidthCollector = DataCollector { dName = Bandwidth.dcName
+                                   , dCategory = Bandwidth.dcCategory
+                                   , dMkReport = mkBandwidthReport
+                                   , dUse = useBandwidth
+                                   }
 
 -- * Node-total CPU load average data collector
 
@@ -284,6 +343,7 @@ collectors opts
   | otherwise =
       (if optMonDXen opts then [ xenCPUCollector ] else [ totalCPUCollector ] )
       ++ [ kvmRSSCollector | optMonDKvmRSS opts ]
+      ++ [ bandwidthCollector | optMonDBandwidth opts ]
 
 -- * Querying infrastructure
 

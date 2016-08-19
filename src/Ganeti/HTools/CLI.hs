@@ -64,6 +64,7 @@ module Ganeti.HTools.CLI
   , oDynuFile
   , oMemWeight
   , oMonD
+  , oMonDBandwidth
   , oMonDDataFile
   , oMonDKvmRSS
   , oMonDXen
@@ -174,6 +175,8 @@ data Options = Options
   , optAcceptExisting :: Bool        -- ^ accept existing N+1 violations
   , optSoR         :: Bool           -- ^ only use state-of-record data
   , optMonD        :: Bool           -- ^ Query MonDs
+  , optMonDBandwidth :: Bool         -- ^ Should bandwidth information be
+                                     -- considered (only if MonD is queried)
   , optMonDFile    :: Maybe FilePath -- ^ Optional file with data provided
                                      -- by MonDs
   , optMonDXen     :: Bool           -- ^ Should Xen-specific collectors be
@@ -258,6 +261,7 @@ defaultOptions  = Options
   , optDynuFile    = Nothing
   , optSoR         = False
   , optMonD        = False
+  , optMonDBandwidth = False
   , optMonDFile = Nothing
   , optMonDXen     = False
   , optMonDKvmRSS  = False
@@ -409,6 +413,13 @@ oMonD =
               return $ opts { optMonD = flag }) "CHOICE")
    "pass either 'yes' or 'no' to query all monDs",
    optComplYesNo)
+
+oMonDBandwidth :: OptType
+oMonDBandwidth =
+  (Option "" ["mond-bandwidth"]
+    (NoArg (\ opts -> Ok opts { optMonDBandwidth = True }))
+    "also consider bandwidth collector in MonD queries",
+    OptComplNone)
 
 oMonDDataFile :: OptType
 oMonDDataFile =

@@ -36,15 +36,21 @@ module Ganeti.Confd.ClientFunctions
   ( getInstances
   , getInstanceDisks
   , getDiagnoseCollectorFilename
+  , getNodes
+  , getNodeGroups
+  , getClusterTags
   ) where
 
 import Control.Monad (liftM)
+import Data.Map as Map
+import Data.Set as Set
 import qualified Text.JSON as J
 
 import Ganeti.BasicTypes as BT
 import Ganeti.Confd.Types
 import Ganeti.Confd.Client
 import Ganeti.Objects
+import Ganeti.JSON
 
 
 -- | Get the list of instances the given node is ([primary], [secondary]) for.
@@ -100,5 +106,47 @@ getDiagnoseCollectorFilename srvAddr srvPort = do
              $ PlainQuery "/cluster/diagnose_data_collector_filename"
   case fmap (J.readJSON . confdReplyAnswer) reply of
     Just (J.Ok filename) -> return filename
+    Just (J.Error msg) -> fail msg
+    Nothing -> fail "No answer from the Confd server"
+
+-- | Get all nodes in the cluster
+getNodes
+  :: Maybe String
+  -> Maybe Int
+  -> BT.ResultT String IO (Map.Map String Ganeti.Objects.Node)
+getNodes srvAddr srvPort = do
+  client <- liftIO $ getConfdClient srvAddr srvPort
+  reply <- liftIO . query client ReqConfigQuery
+             $ PlainQuery "/config/nodes"
+  case fmap (J.readJSON . confdReplyAnswer) reply of
+    Just (J.Ok nodes) -> return $ fromContainer nodes
+    Just (J.Error msg) -> fail msg
+    Nothing -> fail "No answer from the Confd server"
+
+-- | Get all nodegroups in the cluster
+getNodeGroups
+  :: Maybe String
+  -> Maybe Int
+  -> BT.ResultT String IO (Map.Map String Ganeti.Objects.NodeGroup)
+getNodeGroups srvAddr srvPort = do
+  client <- liftIO $ getConfdClient srvAddr srvPort
+  reply <- liftIO . query client ReqConfigQuery
+             $ PlainQuery "/config/nodegroups"
+  case fmap (J.readJSON . confdReplyAnswer) reply of
+    Just (J.Ok ndgroups) -> return $ fromContainer ndgroups
+    Just (J.Error msg) -> fail msg
+    Nothing -> fail "No answer from the Confd server"
+
+-- | Get all nodegroups in the cluster
+getClusterTags
+  :: Maybe String
+  -> Maybe Int
+  -> BT.ResultT String IO (Set.Set String)
+getClusterTags srvAddr srvPort = do
+  client <- liftIO $ getConfdClient srvAddr srvPort
+  reply <- liftIO . query client ReqConfigQuery
+             $ PlainQuery "/cluster/tags"
+  case fmap (J.readJSON . confdReplyAnswer) reply of
+    Just (J.Ok tags) -> return tags
     Just (J.Error msg) -> fail msg
     Nothing -> fail "No answer from the Confd server"

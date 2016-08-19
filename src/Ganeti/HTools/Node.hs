@@ -62,6 +62,7 @@ module Ganeti.HTools.Node
   , setLocationTags
   , setBandwidthTags
   , setBandwidthToLocation
+  , setBandwidthGroupMap
   -- * Tag maps
   , addTags
   , delTags
@@ -111,7 +112,8 @@ import qualified Data.Foldable as Foldable
 import Data.Function (on)
 import qualified Data.Graph as Graph
 import qualified Data.IntMap as IntMap
-import Data.List (intercalate, foldl', delete, union, sortBy, groupBy)
+import Data.List (intercalate, foldl', delete, union, sortBy, groupBy, sort)
+import Data.Maybe (maybeToList)
 import qualified Data.Map as Map
 import Data.Ord (comparing)
 import Data.Maybe (mapMaybe)
@@ -221,6 +223,9 @@ data Node = Node
   , bandwidthMap :: Map.Map String Int -- ^ Node's network bandwidth between
                                     -- current node and any node with given 
                                     -- bandwidth tag in Mbit per second
+  , bandwidthGroupMap :: Map.Map T.Gdx Int -- ^ Node's network bandwidth
+                                    -- between current node and any node
+                                    -- with given group index
   , instanceMap :: Map.Map (String, String) Int -- ^ Number of instances with
                                                 -- each exclusion/location tags
                                                 -- pair
@@ -394,6 +399,7 @@ create name_init mem_t_init mem_n_init mem_f_init
        , locationScore = 0
        , bandwidthTags = Set.empty
        , bandwidthMap = Map.empty
+       , bandwidthGroupMap = Map.empty
        , instanceMap = Map.empty
        }
 
@@ -453,6 +459,10 @@ setBandwidthTags t val = t { bandwidthTags = val }
 setBandwidthToLocation :: Node -> String -> Int -> Node
 setBandwidthToLocation t tag bandwidth = t { bandwidthMap = new_map }
   where new_map = Map.insert tag bandwidth (bandwidthMap t)
+
+-- | Set network bandwidth map based on nodes groups
+setBandwidthGroupMap :: Node -> Map.Map T.Gdx Int -> Node
+setBandwidthGroupMap t m = t { bandwidthGroupMap = m }
 
 -- | Sets the unnaccounted memory.
 setXmem :: Node -> Int -> Node
@@ -575,16 +585,24 @@ calcFmemOfflineOrForthcoming node allInstances =
          . filter (not . Instance.usesMemory)
          $ nodeInstances
 
--- | Calculate the network bandwidth between two given nodes
+-- | Calculate the network bandwidth between two given nodes.
+-- We consider, that bandwidth info from bandwidthGroupMap
+-- is more trustable, because it is obtained by measurements.
+-- If there are no an appropriate value in bandwidthGroupMap
+-- we use the worst value from bandwidthMap if it exists.
 calcBandwidthToNode :: Node -> Node -> Maybe Int
 calcBandwidthToNode src dst =
   case bndwths of
         [] -> Nothing
-        _  -> Just $ minimum bndwths
+        _  -> Just $ head bndwths
   where dstTags = Set.toList $ bandwidthTags dst
         srcMap = bandwidthMap src
         mapper = flip Map.lookup srcMap
-        bndwths = mapMaybe mapper dstTags
+        tag_bndwths = mapMaybe mapper dstTags
+        srcGMap = bandwidthGroupMap src
+        dstGIdx = group dst
+        group_bndwth = Map.lookup dstGIdx srcGMap
+        bndwths = maybeToList group_bndwth ++ sort tag_bndwths
 
 -- | Calculates the desired location score of an instance, given its primary
 -- node.

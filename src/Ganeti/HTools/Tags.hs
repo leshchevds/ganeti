@@ -120,10 +120,10 @@ getBandwidth :: [String] -> [String] -> S.Set String
 getBandwidth = getTags bandwidthPrefix
 
 -- | Split given string on the  all "::" occurences
-splitAtColonsList :: String -> [String]
-splitAtColonsList str =
+splitToColonsList :: String -> [String]
+splitToColonsList str =
   case splitAtColons str of
-    Just (f, s) -> f : splitAtColonsList s
+    Just (f, s) -> f : splitToColonsList s
     Nothing -> [str]
 
 -- | Try to parse string into value
@@ -136,7 +136,7 @@ maybeRead s = case reads s of
 getBandwidthGraph :: [String] -> [(String, String, Int)]
 getBandwidthGraph ctags =
   let unprefTags = mapMaybe (stripPrefix bandwidthPrefix) ctags
-      tupleList = mapMaybe (listToTuple . splitAtColonsList) unprefTags
+      tupleList = mapMaybe (listToTuple . splitToColonsList) unprefTags
   in mapMaybe parseInt tupleList
   where parseInt (a, b, s) = case maybeRead s :: Maybe Int of
           Just i -> Just (a, b, i)

@@ -147,6 +147,7 @@ instance JSON DCVersion where
 data CollectorData =
   CPULoadData (Seq.Seq (ClockTime, [Integer]))
   | InstanceCpuLoad (Map.Map String (Seq.Seq (ClockTime, Double)))
+  | BandwidthData (Map.Map String Int)
 
 instance NFData ClockTime where
   rnf (TOD x y) = rnf x `seq` rnf y
@@ -156,6 +157,7 @@ instance NFData ClockTime where
 instance NFData CollectorData where
   rnf (CPULoadData x) = rnf x
   rnf (InstanceCpuLoad x) = rnf x
+  rnf (BandwidthData x) = rnf x
 
 #else
 
@@ -171,6 +173,7 @@ instance NFData CollectorData where
   rnf (CPULoadData x) =  (x `using` seqFoldable rdeepseq) `seq` ()
   rnf (InstanceCpuLoad x) = (x `using` seqFoldable (seqFoldable rdeepseq))
                             `seq` ()
+  rnf (BandwidthData x) = x
 
 #endif
 
