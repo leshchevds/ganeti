@@ -5954,6 +5954,36 @@ def GetFileInfo(file_path):
     return False, {}
 
 
+def RunSocketCat(size):
+  """Establishes byte stream to /dev/null
+
+  Used for the net benchmarking purposes
+
+  @type size: int
+  @param size: Size of block to receive
+
+  @rtype: tuple of string, int
+  @return: pair ip:port
+
+  """
+  try:
+    my_name = netutils.Hostname.GetSysName()
+    ip = netutils.Hostname.GetIP(my_name)
+    port = netutils.GetFreePort()
+    result = utils.RunCmd(["socat", "-u", "-b", str(size),
+     "TCP-LISTEN:%d,bind=%s,reuseaddr,connect-timeout=60" % (port, ip),
+     "OPEN:/dev/null"])
+    if result.failed:
+      _Fail("Executing 'socat' failed due to: %s with output: %s",
+        result.fail_reason, result.output)
+
+    return ip, port
+  except errors.OpExecError as e:
+    _Fail(e.message % e.args)
+  except Exception as e:
+    _Fail("Can't execute 'socat' due to: " + e.message % e.args)
+
+
 class HooksRunner(object):
   """Hook runner.
 

@@ -1708,3 +1708,37 @@ class LURepairNodeStorage(NoHooksLU):
                                            constants.SO_FIX_CONSISTENCY)
     result.Raise("Failed to repair storage unit '%s' on %s" %
                  (self.op.name, self.op.node_name))
+
+
+class LUNetBenchmark(NoHooksLU):
+  """Net benchmarking logical unit.
+
+  """
+  REQ_BGL = False
+
+  def CheckArguments(self):
+    (self.op.node_uuid, self.op.node_name) = \
+      ExpandNodeUuidAndName(self.cfg, self.op.node_uuid, self.op.node_name)
+
+    if not (0 < self.op.size <= 5242880):
+      raise errors.OpPrereqError("Block size for net benchmark"
+                                 " is too large",
+                                 errors.ECODE_INVAL)
+
+  def ExpandNames(self):
+    """Locking for NetBenchmark.
+
+    This is a last-resort option and shouldn't block on other
+    jobs. Therefore, we grab no locks.
+
+    """
+    self.needed_locks = {}
+
+  def Exec(self, feedback_fn):
+    """Opens 'socat' tunnel to /dev/null on the node for 60 seconds.
+
+    """
+    result = self.rpc.call_net_benchmark(self.op.node_uuid,
+                                           self.op.size)
+    result.Raise("Failed to run 'socat' utility")
+    return result

@@ -147,6 +147,19 @@ def GetInterfaceIpAddresses(ifname):
   return _GetIpAddressesFromIpOutput(result.output)
 
 
+def GetFreePort():
+  """Returns a free port on the current host
+
+  @return: number of free port
+  """
+
+  s = socket(socket.AF_INET, socket.SOCK_STREAM)
+  s.bind(('', 0))
+  addr = s.getsockname()
+  s.close()
+  return addr[1]
+
+
 def GetHostname(name=None, family=None):
   """Returns a Hostname object.
 

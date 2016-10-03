@@ -637,6 +637,9 @@ _MISC_CALLS = [
   ("get_file_info", SINGLE, None, constants.RPC_TMO_FAST, [
     ("file_path", None, None),
     ], None, None, "Checks if a file exists and reports on it"),
+  ("net_benchmark", SINGLE, None, constants.RPC_TMO_FAST, [
+    ("size", None, None),
+    ], None, None, "Opens a socat tunnel to /dev/null for 60 seconds")
   ]
 
 CALLS = {

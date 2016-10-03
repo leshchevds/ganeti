@@ -1313,6 +1313,15 @@ class NodeRequestHandler(http.server.HttpServerHandler):
     """
     return backend.CleanupImportExport(params[0])
 
+  # Network bencmark
+
+  @staticmethod
+  def perspective_net_benchmark(params):
+    """Opens connection via 'socat' utility for benchmark purpose
+
+    """
+    (size,) = params
+    return backend.RunSocketCat(size)
 
 def CheckNoded(_, args):
   """Initial checks whether to run or exit with a failure.

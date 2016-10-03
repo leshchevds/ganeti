@@ -105,6 +105,8 @@ module Ganeti.Rpc
   , RpcCallUploadFile(..)
   , prepareRpcCallUploadFile
   , RpcCallWriteSsconfFiles(..)
+
+  , RpcCallNetBanchmark(..)
   ) where
 
 import Control.Arrow (second)
@@ -858,3 +860,19 @@ instance Rpc RpcCallMasterNodeName RpcResultMasterNodeName where
                                      $ J.fromJSString master
       _ -> Left . JsonDecodeError . (++) "expected string, but got " . show
                                             $ pp_value res
+
+$(buildObject "RpcCallNetBanchmark" "rpcCallNetBanchmark"
+  [ simpleField "size" [t| Int |]
+  ])
+
+instance RpcCall RpcCallNetBanchmark where
+  rpcCallName _           = "net_benchmark"
+  rpcCallTimeout _        = rpcTimeoutToRaw Normal
+  rpcCallAcceptOffline _  = False
+
+$(buildObject "RpcResultNetBenchmark" "rpcResultNetBenchmark"
+    [ simpleField "socat_address"    [t| (String, Int) |]
+    ])
+
+instance Rpc RpcCallNetBanchmark RpcResultNetBenchmark where
+  rpcResultFill _ res = fromJSValueToRes res RpcResultNetBenchmark
